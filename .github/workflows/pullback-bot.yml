@@ -2,19 +2,20 @@ name: Pullback XAUUSD Bot
 
 on:
   schedule:
-    - cron: "*/5 * * * *"   # ogni 5 minuti (orario UTC, minimo consentito da GitHub)
-  workflow_dispatch: {}      # permette di lanciarlo a mano dal tab "Actions" per test
+    - cron: "0 * * * *"    # ogni ora tenta di far partire un nuovo turno (vedi concurrency sotto)
+  workflow_dispatch: {}     # permette di lanciarlo a mano dal tab "Actions" per test
 
 permissions:
   contents: write            # serve per poter salvare state.json nel repository
 
 concurrency:
   group: pullback-bot
-  cancel-in-progress: false  # non sovrapporre due esecuzioni se una impiega piu' tempo
+  cancel-in-progress: false  # non interrompere un turno in corso: il prossimo aspetta in coda
 
 jobs:
   check:
     runs-on: ubuntu-latest
+    timeout-minutes: 355      # margine di sicurezza sotto il limite massimo di 6 ore di GitHub
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
@@ -27,17 +28,23 @@ jobs:
       - name: Installa dipendenze
         run: pip install -r requirements.txt
 
-      - name: Esegui controllo strategia
+      - name: Loop di controllo (un turno di ~5h45, poi il prossimo prende il testimone)
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
-        run: python bot_check_once.py
-
-      - name: Salva lo stato aggiornato nel repository
         run: |
           git config user.name "pullback-bot"
-          
           git config user.email "pullback-bot@users.noreply.github.com"
-          git add state.json
-          git diff --staged --quiet || git commit -m "Aggiorna stato bot [skip ci]"
-          git push
+
+          END=$((SECONDS + 20700))   # ~5h45m: turno lungo ma con margine prima del limite di 6h
+          while [ "$SECONDS" -lt "$END" ]; do
+            python bot_check_once.py
+
+            if ! git diff --quiet -- state.json; then
+              git add state.json
+              git commit -m "Aggiorna stato bot [skip ci]"
+              git push || echo "push fallito, riprovo al prossimo ciclo"
+            fi
+
+            sleep 60
+          done
