@@ -36,6 +36,7 @@ jobs:
       - name: Salva lo stato aggiornato nel repository
         run: |
           git config user.name "pullback-bot"
+          
           git config user.email "pullback-bot@users.noreply.github.com"
           git add state.json
           git diff --staged --quiet || git commit -m "Aggiorna stato bot [skip ci]"
