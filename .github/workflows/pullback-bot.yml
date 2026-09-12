@@ -1,0 +1,42 @@
+name: Pullback XAUUSD Bot
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"   # ogni 5 minuti (orario UTC, minimo consentito da GitHub)
+  workflow_dispatch: {}      # permette di lanciarlo a mano dal tab "Actions" per test
+
+permissions:
+  contents: write            # serve per poter salvare state.json nel repository
+
+concurrency:
+  group: pullback-bot
+  cancel-in-progress: false  # non sovrapporre due esecuzioni se una impiega piu' tempo
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Installa dipendenze
+        run: pip install -r requirements.txt
+
+      - name: Esegui controllo strategia
+        env:
+          TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
+          TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+        run: python bot_check_once.py
+
+      - name: Salva lo stato aggiornato nel repository
+        run: |
+          git config user.name "pullback-bot"
+          git config user.email "pullback-bot@users.noreply.github.com"
+          git add state.json
+          git diff --staged --quiet || git commit -m "Aggiorna stato bot [skip ci]"
+          git push
