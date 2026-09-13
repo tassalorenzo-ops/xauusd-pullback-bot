@@ -2,7 +2,7 @@ name: Pullback XAUUSD Bot
 
 on:
   schedule:
-    - cron: "0 * * * *"    # ogni ora tenta di far partire un nuovo turno (vedi concurrency sotto)
+    - cron: "0 */5 * * *"  # ogni 5 ore tenta il cambio turno (vedi concurrency sotto)
   workflow_dispatch: {}     # permette di lanciarlo a mano dal tab "Actions" per test
 
 permissions:
@@ -46,5 +46,6 @@ jobs:
               git push || echo "push fallito, riprovo al prossimo ciclo"
             fi
 
+            echo "[$(date -u +%H:%M:%S)] check eseguito, prossimo tra 60s"
             sleep 60
           done
