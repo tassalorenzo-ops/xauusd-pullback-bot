@@ -1,6 +1,6 @@
 {
-  "in_position": true,
-  "entry_price": 4128.5,
-  "stop_price": 4108.5,
-  "last_bar_time": "2026-11-05 12:07:00-05:00"
+  "in_position": false,
+  "entry_price": null,
+  "stop_price": null,
+  "last_bar_time": "2026-11-05 12:08:00-05:00"
 }
